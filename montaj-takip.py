@@ -228,8 +228,10 @@ if st.session_state.is_admin and personel_listesi:
 st.divider()
 col_logo, col_yazi = st.columns([1, 7], gap="small")
 with col_logo:
-    st.image("logo.png", width=150)
+    st.image("logo.png", width=200)
 with col_yazi:
+    st.write("") 
+    st.write("") 
     st.write("") 
     st.write("") 
     st.caption("© 2026 ÇÖZÜM MAKİNA - Tüm Hakları Saklıdır.")
