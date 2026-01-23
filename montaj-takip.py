@@ -6,7 +6,8 @@ import io
 import os
 from dotenv import load_dotenv
 
-# .env dosyasını yükler
+st.set_page_config( page_icon="🔧")
+
 load_dotenv() 
 
 # --- 1. VERİTABANI VE SAYFA AYARLARI ---
@@ -137,7 +138,7 @@ if st.session_state.is_admin:
                 conn.commit()
                 st.rerun()
 
-# --- 7. FİRMA ÖZETİ (SENİN İSTEDİĞİN O LİSTE) ---
+# --- 7. FİRMA ÖZETİ  ---
 st.subheader("🏢 Firma Bazlı Bekleyen İş Dağılımı")
 df_ozet = pd.read_sql_query("SELECT musteri as 'Firma Adı', COUNT(*) as 'Bekleyen' FROM isler WHERE durum = 'Beklemede' GROUP BY musteri ORDER BY Bekleyen DESC", conn)
 st.dataframe(df_ozet, hide_index=True, width="stretch")
@@ -166,7 +167,7 @@ if not st.session_state.is_admin:
 else:
     kilitli_sutunlar = ["id", "tarih", "SÜRE"]
 
-# Tablo Yapılandırması (Multiselect Eklendi)
+# Tablo Yapılandırması 
 yapilandirma = {
     "id": None,
     "tarih": st.column_config.TextColumn("Kayıt"),
@@ -207,7 +208,7 @@ with tab_t:
         if st.session_state.is_admin and st.button("💾 Tamamlananları Kaydet"): kaydet(ed_t)
     else: st.info("Henüz tamamlanmış iş yok.")
 
-# --- 9. PERSONEL İSTATİSTİKLERİ (SADECE ADMİN) ---
+# --- 9. PERSONEL İSTATİSTİKLERİ (SADECE ADMİN GÖREBİLİR) ---
 if st.session_state.is_admin and personel_listesi:
     st.divider()
     st.subheader("👥 Personel Montaj İstatistikleri")
@@ -224,14 +225,16 @@ if st.session_state.is_admin and personel_listesi:
     df_stats.columns = ["Personel", "Gidilen İş Sayısı", "Toplam Çalışma (Gün)"]
     st.dataframe(df_stats.sort_values("Toplam Çalışma (Gün)", ascending=False), hide_index=True, width="stretch")
 
+
 # --- FOOTER ---
 st.divider()
 col_logo, col_yazi = st.columns([1, 7], gap="small")
 with col_logo:
-    st.image("logo.png", width=200)
+    st.image("logo-rekli.png", width=180)
 with col_yazi:
     st.write("") 
-    st.write("") 
-    st.write("") 
-    st.write("") 
+    st.write("")
     st.caption("© 2026 ÇÖZÜM MAKİNA - Tüm Hakları Saklıdır.")
+
+
+
