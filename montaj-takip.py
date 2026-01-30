@@ -236,5 +236,5 @@ col_logo, col_yazi = st.columns([1, 7], gap="small")
 with col_logo:
     st.image("logo-rekli.png", width=180) 
 with col_yazi:
-    st.write(""); st.write(""); st.write(""); st.write("")
+    st.write(""); st.write("")
     st.caption("© 2026 ÇÖZÜM MAKİNA - Montaj & Demo Takip v4.3")
