@@ -87,17 +87,19 @@ def bekleme_suresi_hesapla(tarih_str, durum):
         except: return "-"
     return "-"
 
-# --- 6. ÜST PANEL: METRİKLER  ---
+# --- 6. ÜST PANEL: METRİKLER (GÜNCELLENMİŞ SIRALAMA) ---
 b_montaj = pd.read_sql_query("SELECT COUNT(*) FROM isler WHERE durum='Beklemede' AND tur='Normal'", conn).iloc[0,0]
 t_montaj = pd.read_sql_query("SELECT COUNT(*) FROM isler WHERE durum='Tamamlandı' AND tur='Normal'", conn).iloc[0,0]
 b_demo = pd.read_sql_query("SELECT COUNT(*) FROM isler WHERE durum='Beklemede' AND tur='Demo'", conn).iloc[0,0]
-t_demo = pd.read_sql_query("SELECT COUNT(*) FROM isler WHERE durum='Tamamlandı' AND tur='Demo'", conn).iloc[0,0]
+s_demo = pd.read_sql_query("SELECT COUNT(*) FROM isler WHERE durum='Tamamlandı' AND tur='Demo'", conn).iloc[0,0]
+biten_demo = pd.read_sql_query("SELECT COUNT(*) FROM isler WHERE durum='Biten' AND tur='Demo'", conn).iloc[0,0]
 
-col1, col2, col3, col4 = st.columns(4)
+col1, col2, col3, col4, col5 = st.columns(5)
 col1.metric("⏳ Bekleyen Montaj", f"{b_montaj}")
 col2.metric("✅ Tamamlanan Montaj", f"{t_montaj}")
 col3.metric("⏳ Bekleyen Demo", f"{b_demo}")
-col4.metric("✅ Tamamlanan Demo", f"{t_demo}")
+col4.metric("🧪 Süren Demo", f"{s_demo}")
+col5.metric("🏁 Biten Demo", f"{biten_demo}")
 
 try:
     df_export = pd.read_sql_query("SELECT * FROM isler", conn)
@@ -159,10 +161,11 @@ if not st.session_state.is_admin:
 else:
     kilitli_sutunlar = ["id", "tarih", "SÜRE", "tur"]
 
+# Durum seçeneklerine 'Biten' eklendi
 yapilandirma = {
     "id": None, "tur": st.column_config.TextColumn("Tür"),
     "tarih": st.column_config.TextColumn("Kayıt"), "SÜRE": st.column_config.TextColumn("Bekleme"),
-    "durum": st.column_config.SelectboxColumn("Durum", options=["Beklemede", "Tamamlandı"], required=True),
+    "durum": st.column_config.SelectboxColumn("Durum", options=["Beklemede", "Tamamlandı", "Biten"], required=True),
     "personel": st.column_config.MultiselectColumn("Giden Ekip", options=personel_listesi),
     "sure_gun": st.column_config.NumberColumn("Gün", min_value=0, step=1),
     "SİL": st.column_config.CheckboxColumn("Sil?")
@@ -182,8 +185,8 @@ def kaydet(data):
         conn.commit()
         st.rerun()
 
-# --- 4 SEKMELİ YAPI  ---
-tab_bn, tab_tn, tab_bd, tab_td = st.tabs(["⏳ BEKLEYEN MONTAJLAR", "✅ TAMAMLANAN MONTAJLAR", "⏳ BEKLEYEN DEMOLAR", "✅ TAMAMLANAN DEMOLAR"])
+# --- 5 SEKMELİ YAPI (İSTEDİĞİN SIRALAMA) ---
+tab_bn, tab_tn, tab_bd, tab_sd, tab_bt = st.tabs(["⏳ BEKLEYEN MONTAJLAR", "✅ TAMAMLANAN MONTAJLAR", "⏳ BEKLEYEN DEMOLAR", "🧪 SÜREN DEMOLAR", "🏁 BİTEN DEMOLAR"])
 
 with tab_bn:
     df_bn = df[(df['durum'] == 'Beklemede') & (df['tur'] == 'Normal')]
@@ -206,19 +209,29 @@ with tab_bd:
         if st.session_state.is_admin and st.button("💾 Bekleyen Demoları Güncelle"): kaydet(ed_bd)
     else: st.info("Bekleyen demo talebi yok.")
 
-with tab_td:
-    df_td = df[(df['durum'] == 'Tamamlandı') & (df['tur'] == 'Demo')]
-    if not df_td.empty:
-        ed_td = st.data_editor(df_td, column_config=yapilandirma, hide_index=True, width="stretch", key="etd", disabled=kilitli_sutunlar)
-        if st.session_state.is_admin and st.button("💾 Tamamlanan Demoları Güncelle"): kaydet(ed_td)
-    else: st.info("Tamamlanmış demo kaydı yok.")
+with tab_sd:
+    # Tamamlanan Demolar artık 'Süren Demolar' olarak gösteriliyor
+    df_sd = df[(df['durum'] == 'Tamamlandı') & (df['tur'] == 'Demo')]
+    if not df_sd.empty:
+        ed_sd = st.data_editor(df_sd, column_config=yapilandirma, hide_index=True, width="stretch", key="esd", disabled=kilitli_sutunlar)
+        if st.session_state.is_admin and st.button("💾 Süren Demoları Güncelle"): kaydet(ed_sd)
+    else: st.info("Süren demo bulunmuyor.")
+
+with tab_bt:
+    # Yeni 'Biten Demolar' sekmesi eklendi
+    df_bt = df[(df['durum'] == 'Biten') & (df['tur'] == 'Demo')]
+    if not df_bt.empty:
+        ed_bt = st.data_editor(df_bt, column_config=yapilandirma, hide_index=True, width="stretch", key="ebt", disabled=kilitli_sutunlar)
+        if st.session_state.is_admin and st.button("💾 Biten Demoları Güncelle"): kaydet(ed_bt)
+    else: st.info("Biten demo kaydı yok.")
 
 # --- 10. PERSONEL İSTATİSTİKLERİ ---
 if st.session_state.is_admin and personel_listesi:
     st.divider()
     st.subheader("👥 Ortak Personel İstatistikleri (Montaj + Demo)")
     stats = {isim: {"İş_Sayısı": 0, "Toplam_Gün": 0} for isim in personel_listesi}
-    df_db = pd.read_sql_query("SELECT personel, sure_gun FROM isler WHERE durum='Tamamlandı'", conn)
+    # İstatistikler Tamamlandı ve Biten durumlarını ortak sayar
+    df_db = pd.read_sql_query("SELECT personel, sure_gun FROM isler WHERE durum IN ('Tamamlandı', 'Biten')", conn)
     for _, row in df_db.iterrows():
         if row['personel']:
             gidenler = [p.strip() for p in row['personel'].split(',')]
@@ -237,4 +250,4 @@ with col_logo:
     st.image("logo-rekli.png", width=180) 
 with col_yazi:
     st.write(""); st.write("")
-    st.caption("© 2026 ÇÖZÜM MAKİNA - Montaj & Demo Takip v4.3")
+    st.caption("© 2026 ÇÖZÜM MAKİNA - Montaj & Demo Takip v4.4")
